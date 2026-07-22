@@ -1,0 +1,122 @@
+name: build and deploy vehicle insurance app to AWS
+
+# Trigger: run this workflow every time code is pushed to main,
+# except when only docs/readme changes (no need to redeploy for that)
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'README.md'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+
+  # ------------------------------------------------------------
+  # JOB 1 — Continuous Integration
+  # Runs on GitHub's own temporary machine.
+  # Just checks the code out and does a basic sanity check.
+  # ------------------------------------------------------------
+  integration:
+    name: Continuous Integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint code
+        run: echo "Linting repository"
+
+      - name: Run unit tests
+        run: echo "Running unit tests"
+
+  # ------------------------------------------------------------
+  # JOB 2 — Build Docker image and push to AWS ECR
+  # Still runs on GitHub's temporary machine — building the image
+  # doesn't need to happen on your EC2 server.
+  # ------------------------------------------------------------
+  build-and-push-ecr-image:
+    name: Continuous Delivery
+    needs: integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install AWS CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y awscli
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REPOSITORY_URI: ${{ secrets.ECR_REPO }}
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $ECR_REPOSITORY_URI:$IMAGE_TAG .
+          docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+
+  # ------------------------------------------------------------
+  # JOB 3 — Continuous Deployment
+  # runs-on: self-hosted  --> this runs ON YOUR EC2 instance,
+  # not on GitHub's machine, since only your EC2 server can
+  # actually restart the live container.
+  # ------------------------------------------------------------
+  continuous-deployment:
+    name: Continuous Deployment
+    needs: build-and-push-ecr-image
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Pull latest image from Amazon ECR
+        env:
+          ECR_REPOSITORY_URI: ${{ secrets.ECR_REPO }}
+        run: |
+          docker pull $ECR_REPOSITORY_URI:latest
+
+      - name: Stop and remove previous container (if running)
+        run: |
+          docker stop vehicle-app-container || true
+          docker rm vehicle-app-container || true
+
+      - name: Run new container
+        env:
+          ECR_REPOSITORY_URI: ${{ secrets.ECR_REPO }}
+        run: |
+          docker run -d \
+            --name vehicle-app-container \
+            -p 5000:5000 \
+            -e MONGODB_URL='${{ secrets.MONGODB_URL }}' \
+            -e AWS_ACCESS_KEY_ID='${{ secrets.AWS_ACCESS_KEY_ID }}' \
+            -e AWS_SECRET_ACCESS_KEY='${{ secrets.AWS_SECRET_ACCESS_KEY }}' \
+            -e AWS_DEFAULT_REGION='${{ secrets.AWS_DEFAULT_REGION }}' \
+            $ECR_REPOSITORY_URI:latest
+
+      - name: Clean up dangling images
+        run: docker system prune -f

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NetGuard Underwriting &mdash; Response Assessment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <div class="backdrop"></div>
+
+  <header class="topbar">
+    <div class="topbar__mark">
+      <span class="topbar__mark-dot"></span>
+      Vehicle Insurance &mdash; Response Model
+    </div>
+    <div class="topbar__meta">underwriting console / v1</div>
+  </header>
+
+  <main class="layout">
+
+    <!-- LEFT: FORM -->
+    <section class="panel form-panel" aria-labelledby="form-heading">
+      <div class="panel__eyebrow">applicant intake</div>
+      <h1 id="form-heading" class="panel__title">Risk &amp; Response Assessment</h1>
+      <p class="panel__subtitle">
+        Enter applicant and policy details. The model estimates the likelihood
+        this applicant responds positively to the vehicle insurance offer.
+      </p>
+
+      <form id="assessmentForm" method="POST" action="/" class="grid-form">
+
+        <fieldset class="field-group">
+          <legend>Applicant</legend>
+
+          <div class="field">
+            <label for="Gender">Gender</label>
+            <select id="Gender" name="Gender" required>
+              <option value="" disabled selected>Select&hellip;</option>
+              <option value="1">Male</option>
+              <option value="0">Female</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="Age">Age</label>
+            <input type="number" id="Age" name="Age" min="18" max="100" placeholder="e.g. 34" required />
+          </div>
+
+          <div class="field">
+            <label for="Driving_License">Driving License</label>
+            <select id="Driving_License" name="Driving_License" required>
+              <option value="" disabled selected>Select&hellip;</option>
+              <option value="1">Yes, holds license</option>
+              <option value="0">No license</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="Region_Code">Region Code</label>
+            <input type="number" id="Region_Code" name="Region_Code" step="1" placeholder="e.g. 28" required />
+          </div>
+        </fieldset>
+
+        <fieldset class="field-group">
+          <legend>Vehicle</legend>
+
+          <div class="field">
+            <label for="Vehicle_Age_lt_1_Year">Vehicle age less than 1 year?</label>
+            <select id="Vehicle_Age_lt_1_Year" name="Vehicle_Age_lt_1_Year" required>
+              <option value="" disabled selected>Select&hellip;</option>
+              <option value="1">Yes</option>
+              <option value="0">No</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="Vehicle_Age_gt_2_Years">Vehicle age more than 2 years?</label>
+            <select id="Vehicle_Age_gt_2_Years" name="Vehicle_Age_gt_2_Years" required>
+              <option value="" disabled selected>Select&hellip;</option>
+              <option value="1">Yes</option>
+              <option value="0">No</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="Vehicle_Damage_Yes">Prior Vehicle Damage</label>
+            <select id="Vehicle_Damage_Yes" name="Vehicle_Damage_Yes" required>
+              <option value="" disabled selected>Select&hellip;</option>
+              <option value="1">Yes</option>
+              <option value="0">No</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="Previously_Insured">Previously Insured</label>
+            <select id="Previously_Insured" name="Previously_Insured" required>
+              <option value="" disabled selected>Select&hellip;</option>
+              <option value="1">Yes</option>
+              <option value="0">No</option>
+            </select>
+          </div>
+        </fieldset>
+
+        <fieldset class="field-group">
+          <legend>Policy</legend>
+
+          <div class="field">
+            <label for="Annual_Premium">Annual Premium <span>(PKR)</span></label>
+            <input type="number" id="Annual_Premium" name="Annual_Premium" step="0.01" placeholder="e.g. 32000" required />
+          </div>
+
+          <div class="field">
+            <label for="Policy_Sales_Channel">Policy Sales Channel</label>
+            <input type="number" id="Policy_Sales_Channel" name="Policy_Sales_Channel" step="1" placeholder="e.g. 152" required />
+          </div>
+
+          <div class="field field--wide">
+            <label for="Vintage">Vintage <span>(days as customer)</span></label>
+            <input type="number" id="Vintage" name="Vintage" step="1" placeholder="e.g. 107" required />
+          </div>
+        </fieldset>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Run Assessment</button>
+          <a href="/train" class="btn btn--ghost">Retrain Model</a>
+        </div>
+      </form>
+    </section>
+
+    <!-- RIGHT: RESULT / GAUGE -->
+    <aside class="panel result-panel" aria-labelledby="result-heading" data-status="{{ context }}">
+      <div class="panel__eyebrow">model output</div>
+      <h2 id="result-heading" class="panel__title panel__title--sm">Interest Likelihood</h2>
+
+      <div class="gauge" id="gauge">
+        <svg viewBox="0 0 220 130" class="gauge__svg">
+          <path class="gauge__track" d="M 20 110 A 90 90 0 0 1 200 110" />
+          <path class="gauge__fill" id="gaugeFill" d="M 20 110 A 90 90 0 0 1 200 110" />
+          <line class="gauge__needle" id="gaugeNeedle" x1="110" y1="110" x2="110" y2="35" />
+          <circle class="gauge__hub" cx="110" cy="110" r="7" />
+        </svg>
+        <div class="gauge__labels">
+          <span>Low</span>
+          <span>High</span>
+        </div>
+      </div>
+
+      <div class="result-readout" id="resultReadout">
+        {% if context == "Response-Yes" %}
+          <div class="result-readout__status">Likely to respond &mdash; Yes</div>
+          <p class="result-readout__note">The model predicts this applicant is likely to respond positively to the offer.</p>
+        {% elif context == "Response-No" %}
+          <div class="result-readout__status">Unlikely to respond &mdash; No</div>
+          <p class="result-readout__note">The model predicts this applicant is unlikely to respond to the offer.</p>
+        {% else %}
+          <div class="result-readout__status">Awaiting assessment</div>
+          <p class="result-readout__note">Submit applicant details to generate a prediction from the trained model.</p>
+        {% endif %}
+      </div>
+
+      <dl class="result-legend">
+        <div><dt class="dot dot--yes"></dt><dd>Response &mdash; Yes</dd></div>
+        <div><dt class="dot dot--no"></dt><dd>Response &mdash; No</dd></div>
+      </dl>
+    </aside>
+
+  </main>
+
+  <footer class="footer">
+    Vehicle Insurance MLOps &middot; MongoDB Atlas &rarr; Training Pipeline &rarr; S3 Model Registry &rarr; FastAPI
+  </footer>
+
+</body>
+</html>
