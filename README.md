@@ -172,6 +172,3 @@ or hit the `/train` endpoint directly.
 BS Artificial Intelligence, HiTech University
 Focused on ML Engineering & MLOps | Building production-grade ML systems
 
-[LinkedIn](#) · [GitHub](#) · [Portfolio](#)
-
-</div>
